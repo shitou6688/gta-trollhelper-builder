@@ -62,6 +62,8 @@ jobs:
         sed -i '' 's|@"Powered by Fugu15 CoreTrust \& installd bugs, thanks to @LinusHenze\\n\\n© 2022-2026 Lars Fröder (opa334)"|@"基于 Fugu15 CoreTrust 和 installd 漏洞，感谢 @LinusHenze\\n\\n© 2022-2026 Lars Fröder (opa334)\\n\\n优化者：jiesuo66688"|g' TrollHelper/TSHRootViewController.m
         # New CT bug credits (CVE-2023-41991)
         sed -i '' 's|@"Powered by CVE-2023-41991, originally discovered by Google TAG, rediscovered via patchdiffing by @alfiecg_dev\\n\\n© 2022-2026 Lars Fröder (opa334)"|@"基于 CVE-2023-41991 漏洞，最初由 Google TAG 发现，经 @alfiecg_dev 补丁比对重新发现\\n\\n© 2022-2026 Lars Fröder (opa334)\\n\\n优化者：jiesuo66688"|g' TrollHelper/TSHRootViewController.m
+        # Replace TrollStore update download URL
+        sed -i '' 's|https://github.com/opa334/TrollStore/releases/latest/download/TrollStore.tar|https://www.modelscope.cn/datasets/qwer1234561476/jumo/resolve/master/TrollStore.tar|g' Shared/TSListControllerShared.m
 
     - name: Build fastPathSign
       working-directory: Exploits/fastPathSign
