@@ -21,7 +21,8 @@ jobs:
 
     - name: Install dependencies
       run: |
-        brew install ldid openssl@3 make
+        brew install ldid openssl@3 make pkg-config
+        echo "PKG_CONFIG_PATH=$(brew --prefix openssl@3)/lib/pkgconfig" >> $GITHUB_ENV
 
     - name: Setup theos
       run: |
@@ -30,6 +31,11 @@ jobs:
           git clone --depth 1 https://github.com/theos/theos.git $THEOS
         fi
         echo "THEOS=$THEOS" >> $GITHUB_ENV
+
+    - name: Clone ChOma dependency
+      run: |
+        cd src
+        git clone --depth 1 https://github.com/opa334/ChOma.git ChOma
 
     - name: Build fastPathSign (for arm64e codesign)
       run: |
