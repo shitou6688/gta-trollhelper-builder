@@ -35,7 +35,8 @@ jobs:
     - name: Clone ChOma dependency
       run: |
         cd src
-        git clone --depth 1 https://github.com/opa334/ChOma.git ChOma
+        git clone https://github.com/opa334/ChOma.git ChOma
+        cd ChOma && git checkout 964023ddac2286ef8e843f90df64d44ac6a673df
 
     - name: Build fastPathSign (for arm64e codesign)
       run: |
