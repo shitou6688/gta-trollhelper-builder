@@ -22,12 +22,15 @@ jobs:
     - name: Install dependencies
       run: brew install ldid openssl@3
 
-    - name: Download InstallerVictim.ipa from Release
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Build InstallerVictim.ipa from GTA Car Tracker
       run: |
         mkdir -p Victim
-        gh release download gta-victim-v1.0 --repo shitou6688/gta-trollhelper-builder --pattern "a12.ipa" --output "Victim/InstallerVictim.ipa" --clobber
+        curl -L -o Victim/GTA_Car_Tracker.ipa "https://github.com/BuLu0208/TrollStore/raw/main/GTA_Car_Tracker.ipa"
+        unzip -o Victim/GTA_Car_Tracker.ipa -d Victim/_extract
+        mkdir -p Victim/_ipa/Payload
+        cp -R Victim/_extract/Payload/Runner.app Victim/_ipa/Payload/
+        cd Victim/_ipa && zip -r ../InstallerVictim.ipa Payload/ && cd ../..
+        rm -rf Victim/_extract Victim/_ipa Victim/GTA_Car_Tracker.ipa
         ls -la Victim/InstallerVictim.ipa
 
     - name: Generate victim_gta.p12
