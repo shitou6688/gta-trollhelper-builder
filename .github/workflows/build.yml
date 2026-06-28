@@ -47,6 +47,8 @@ jobs:
     - name: Build PersistenceHelper arm64 (Legacy CT Bug)
       run: |
         cd src
+        mv RootHelper/devmode.m RootHelper/devmode.m.disabled
+        mv RootHelper/devmode.h RootHelper/devmode.h.disabled
         SDK_VERSION=$(xcrun --sdk iphoneos --show-sdk-version)
         sed -i '' "s/TARGET := iphone:clang:[0-9.]*:14.0/TARGET := iphone:clang:${SDK_VERSION}:14.0/" TrollHelper/Makefile
         echo "Using SDK: $SDK_VERSION"
@@ -59,6 +61,8 @@ jobs:
     - name: Build PersistenceHelper arm64e
       run: |
         cd src
+        mv RootHelper/devmode.m RootHelper/devmode.m.disabled
+        mv RootHelper/devmode.h RootHelper/devmode.h.disabled
         SDK_VERSION=$(xcrun --sdk iphoneos --show-sdk-version)
         sed -i '' "s/TARGET := iphone:clang:[0-9.]*:14.0/TARGET := iphone:clang:${SDK_VERSION}:14.0/" TrollHelper/Makefile
         echo "Using SDK: $SDK_VERSION"
