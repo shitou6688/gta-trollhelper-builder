@@ -30,6 +30,7 @@ jobs:
         if [ ! -d "$THEOS" ]; then
           git clone --depth 1 https://github.com/theos/theos.git $THEOS
         fi
+        $THEOS/bin/update-theos
         echo "THEOS=$THEOS" >> $GITHUB_ENV
 
     - name: Clone ChOma dependency
