@@ -47,7 +47,7 @@ jobs:
       run: |
         cd src
         SDK_VERSION=$(xcrun --sdk iphoneos --show-sdk-version)
-        export TARGET="iphone:clang:${SDK_VERSION}:14.0"
+        sed -i '' "s/TARGET := iphone:clang:[0-9.]*:14.0/TARGET := iphone:clang:${SDK_VERSION}:14.0/" TrollHelper/Makefile
         echo "Using SDK: $SDK_VERSION"
         make -C TrollHelper clean
         make -C TrollHelper FINALPACKAGE=1 EMBEDDED_ROOT_HELPER=1 LEGACY_CT_BUG=1
@@ -59,7 +59,7 @@ jobs:
       run: |
         cd src
         SDK_VERSION=$(xcrun --sdk iphoneos --show-sdk-version)
-        export TARGET="iphone:clang:${SDK_VERSION}:14.0"
+        sed -i '' "s/TARGET := iphone:clang:[0-9.]*:14.0/TARGET := iphone:clang:${SDK_VERSION}:14.0/" TrollHelper/Makefile
         echo "Using SDK: $SDK_VERSION"
         make -C TrollHelper clean
         make -C TrollHelper FINALPACKAGE=1 EMBEDDED_ROOT_HELPER=1 CUSTOM_ARCHS=arm64e
