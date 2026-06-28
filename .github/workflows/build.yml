@@ -13,63 +13,76 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: macos-14
 
     steps:
-    - name: Checkout
+    - name: Checkout TrollStore (full source + submodules)
       uses: actions/checkout@v4
+      with:
+        repository: shitou6688/TrollStore
+        submodules: recursive
 
-    - name: Install dependencies
-      run: |
-        brew install ldid openssl@3 make pkg-config
-        echo "PKG_CONFIG_PATH=$(brew --prefix openssl@3)/lib/pkgconfig" >> $GITHUB_ENV
+    - name: Checkout builder scripts
+      uses: actions/checkout@v4
+      with:
+        path: _builder
 
-    - name: Setup theos
+    - name: Setup Theos
       run: |
-        export THEOS=/tmp/theos
-        if [ ! -d "$THEOS" ]; then
-          git clone --depth 1 https://github.com/theos/theos.git $THEOS
-        fi
-        $THEOS/bin/update-theos
+        export THEOS=~/theos
+        git clone --recursive https://github.com/theos/theos.git $THEOS
         echo "THEOS=$THEOS" >> $GITHUB_ENV
+        echo "PATH=$THEOS/bin:$PATH" >> $GITHUB_ENV
 
-    - name: Clone ChOma dependency
+    - name: Install iOS SDK
       run: |
-        cd src
-        git clone https://github.com/opa334/ChOma.git ChOma
-        cd ChOma && git checkout 964023ddac2286ef8e843f90df64d44ac6a673df
+        mkdir -p ~/theos/sdks
+        curl -LO https://github.com/theos/sdks/archive/master.zip
+        unzip master.zip
+        cp -rn sdks-master/*.sdk ~/theos/sdks/ 2>/dev/null || true
+        ls ~/theos/sdks/
 
-    - name: Build fastPathSign (for arm64e codesign)
+    - name: Install Deps
+      run: brew install libarchive ldid xz
+
+    - name: Localize + Branding
       run: |
-        cd src
-        make -C Exploits/fastPathSign
+        # Basic UI localization
+        sed -i '' 's|@"Install TrollStore"|@"安装巨魔商店"|g' TrollHelper/TSHRootViewController.m
+        sed -i '' 's|@"Refresh App Registrations"|@"刷新应用注册"|g' TrollHelper/TSHRootViewController.m
+        sed -i '' 's|@"Not Installed"|@"未安装"|g' TrollHelper/TSHRootViewController.m
+        sed -i '' 's|@"Installed, %@"|@"已安装，%@"|g' TrollHelper/TSHRootViewController.m
+        sed -i '' 's|@"Uninstall TrollStore"|@"卸载巨魔商店"|g' TrollHelper/TSHRootViewController.m
+        sed -i '' 's|@"Uninstall Persistence Helper"|@"卸载持久化助手"|g' TrollHelper/TSHRootViewController.m
+        sed -i '' 's|@"Register Persistence Helper"|@"注册持久化助手"|g' TrollHelper/TSHRootViewController.m
+        sed -i '' 's|@"Unregister Persistence Helper"|@"取消注册持久化助手"|g' TrollHelper/TSHRootViewController.m
+        sed -i '' 's|@"TrollStore Helper"|@"巨魔商店助手"|g' TrollHelper/TSHRootViewController.m
+        sed -i '' 's|@"Update TrollStore to %@"|@"更新巨魔商店到 %@"|g' TrollHelper/TSHRootViewController.m
+        # Legacy CT bug credits (Fugu15)
+        sed -i '' 's|@"Powered by Fugu15 CoreTrust \& installd bugs, thanks to @LinusHenze\\n\\n© 2022-2026 Lars Fröder (opa334)"|@"基于 Fugu15 CoreTrust 和 installd 漏洞，感谢 @LinusHenze\\n\\n© 2022-2026 Lars Fröder (opa334)\\n\\n优化者：jiesuo66688"|g' TrollHelper/TSHRootViewController.m
+        # New CT bug credits (CVE-2023-41991)
+        sed -i '' 's|@"Powered by CVE-2023-41991, originally discovered by Google TAG, rediscovered via patchdiffing by @alfiecg_dev\\n\\n© 2022-2026 Lars Fröder (opa334)"|@"基于 CVE-2023-41991 漏洞，最初由 Google TAG 发现，经 @alfiecg_dev 补丁比对重新发现\\n\\n© 2022-2026 Lars Fröder (opa334)\\n\\n优化者：jiesuo66688"|g' TrollHelper/TSHRootViewController.m
+
+    - name: Build fastPathSign
+      working-directory: Exploits/fastPathSign
+      run: make
 
     - name: Build PersistenceHelper arm64 (Legacy CT Bug)
+      working-directory: TrollHelper
       run: |
-        cd src
-        mv RootHelper/devmode.m RootHelper/devmode.m.disabled
-        mv RootHelper/devmode.h RootHelper/devmode.h.disabled
-        SDK_VERSION=$(xcrun --sdk iphoneos --show-sdk-version)
-        sed -i '' "s/TARGET := iphone:clang:[0-9.]*:14.0/TARGET := iphone:clang:${SDK_VERSION}:14.0/" TrollHelper/Makefile
-        echo "Using SDK: $SDK_VERSION"
-        make -C TrollHelper clean
-        make -C TrollHelper FINALPACKAGE=1 EMBEDDED_ROOT_HELPER=1 LEGACY_CT_BUG=1
-        mkdir -p ../helpers
-        cp TrollHelper/.theos/obj/TrollStorePersistenceHelper.app/TrollStorePersistenceHelper ../helpers/PersistenceHelper_Embedded_Legacy_arm64
-        file ../helpers/PersistenceHelper_Embedded_Legacy_arm64
+        make clean
+        make FINALPACKAGE=1 EMBEDDED_ROOT_HELPER=1 LEGACY_CT_BUG=1
+        mkdir -p ../_builder/helpers
+        cp .theos/obj/TrollStorePersistenceHelper.app/TrollStorePersistenceHelper ../_builder/helpers/PersistenceHelper_Embedded_Legacy_arm64
+        file ../_builder/helpers/PersistenceHelper_Embedded_Legacy_arm64
 
     - name: Build PersistenceHelper arm64e
+      working-directory: TrollHelper
       run: |
-        cd src
-        mv RootHelper/devmode.m RootHelper/devmode.m.disabled
-        mv RootHelper/devmode.h RootHelper/devmode.h.disabled
-        SDK_VERSION=$(xcrun --sdk iphoneos --show-sdk-version)
-        sed -i '' "s/TARGET := iphone:clang:[0-9.]*:14.0/TARGET := iphone:clang:${SDK_VERSION}:14.0/" TrollHelper/Makefile
-        echo "Using SDK: $SDK_VERSION"
-        make -C TrollHelper clean
-        make -C TrollHelper FINALPACKAGE=1 EMBEDDED_ROOT_HELPER=1 CUSTOM_ARCHS=arm64e
-        cp TrollHelper/.theos/obj/TrollStorePersistenceHelper.app/TrollStorePersistenceHelper ../helpers/PersistenceHelper_Embedded_Legacy_arm64e
-        file ../helpers/PersistenceHelper_Embedded_Legacy_arm64e
+        make clean
+        make FINALPACKAGE=1 EMBEDDED_ROOT_HELPER=1 CUSTOM_ARCHS=arm64e
+        cp .theos/obj/TrollStorePersistenceHelper.app/TrollStorePersistenceHelper ../_builder/helpers/PersistenceHelper_Embedded_Legacy_arm64e
+        file ../_builder/helpers/PersistenceHelper_Embedded_Legacy_arm64e
 
     - name: Build InstallerVictim.ipa from GTA Car Tracker
       run: |
@@ -84,21 +97,11 @@ jobs:
 
     - name: Generate victim_gta.p12
       run: |
-        bash scripts/generate_victim_cert.sh T8ALTGMVXN
+        bash _builder/scripts/generate_victim_cert.sh T8ALTGMVXN
         mv victim.p12 victim_gta.p12
         ls -la victim_gta.p12
 
-    - name: Verify helper binaries
-      run: |
-        for f in helpers/PersistenceHelper_Embedded_Legacy_arm64 helpers/PersistenceHelper_Embedded_Legacy_arm64e; do
-          if [ ! -f "$f" ]; then
-            echo "ERROR: Missing $f"
-            exit 1
-          fi
-          file "$f"
-        done
-
-    - name: Build TrollHelper_iOS15.ipa (arm64)
+    - name: Build TrollHelper_iOS15.ipa (arm64, iOS 14.0-15.4.1)
       run: |
         mkdir -p _build/tmp15
         unzip -o Victim/InstallerVictim.ipa -d _build/tmp15
@@ -107,21 +110,21 @@ jobs:
         BINARY_NAME=$(echo "$APP_NAME" | cut -f1 -d'.')
         echo "App: $APP_NAME, Binary: $BINARY_NAME"
 
-        cp helpers/PersistenceHelper_Embedded_Legacy_arm64 _build/TrollStorePersistenceHelperToInject
-        python3 scripts/pwnify.py set-cpusubtype _build/TrollStorePersistenceHelperToInject 1
+        cp _builder/helpers/PersistenceHelper_Embedded_Legacy_arm64 _build/TrollStorePersistenceHelperToInject
+        python3 _builder/scripts/pwnify.py set-cpusubtype _build/TrollStorePersistenceHelperToInject 1
         ldid -S -K./victim_gta.p12 _build/TrollStorePersistenceHelperToInject
-        python3 scripts/pwnify.py pwn "_build/tmp15/Payload/$APP_NAME/$BINARY_NAME" _build/TrollStorePersistenceHelperToInject
+        python3 _builder/scripts/pwnify.py pwn "_build/tmp15/Payload/$APP_NAME/$BINARY_NAME" _build/TrollStorePersistenceHelperToInject
 
         /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity dict" "_build/tmp15/Payload/$APP_NAME/Info.plist"
         /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity:NSAllowsArbitraryLoads bool true" "_build/tmp15/Payload/$APP_NAME/Info.plist"
 
-        python3 scripts/pwnify.py print "_build/tmp15/Payload/$APP_NAME/$BINARY_NAME"
+        python3 _builder/scripts/pwnify.py print "_build/tmp15/Payload/$APP_NAME/$BINARY_NAME"
         cd _build/tmp15 && zip -r ../../TrollHelper_iOS15.ipa Payload/ && cd ../..
         rm -f _build/TrollStorePersistenceHelperToInject
         rm -rf _build/tmp15
         echo "Built TrollHelper_iOS15.ipa ($(du -h TrollHelper_iOS15.ipa | cut -f1))"
 
-    - name: Build TrollHelper_arm64e.ipa (arm64e)
+    - name: Build TrollHelper_arm64e.ipa (arm64e, iOS 14.0-15.6.1)
       run: |
         mkdir -p _build/tmp64e
         unzip -o Victim/InstallerVictim.ipa -d _build/tmp64e
@@ -130,29 +133,20 @@ jobs:
         BINARY_NAME=$(echo "$APP_NAME" | cut -f1 -d'.')
         echo "App: $APP_NAME, Binary: $BINARY_NAME"
 
-        python3 scripts/pwnify.py pwn64e "_build/tmp64e/Payload/$APP_NAME/$BINARY_NAME" helpers/PersistenceHelper_Embedded_Legacy_arm64e
+        python3 _builder/scripts/pwnify.py pwn64e "_build/tmp64e/Payload/$APP_NAME/$BINARY_NAME" _builder/helpers/PersistenceHelper_Embedded_Legacy_arm64e
 
         /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity dict" "_build/tmp64e/Payload/$APP_NAME/Info.plist"
         /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity:NSAllowsArbitraryLoads bool true" "_build/tmp64e/Payload/$APP_NAME/Info.plist"
 
-        python3 scripts/pwnify.py print "_build/tmp64e/Payload/$APP_NAME/$BINARY_NAME"
+        python3 _builder/scripts/pwnify.py print "_build/tmp64e/Payload/$APP_NAME/$BINARY_NAME"
         cd _build/tmp64e && zip -r ../../TrollHelper_arm64e.ipa Payload/ && cd ../..
         rm -rf _build/tmp64e
         echo "Built TrollHelper_arm64e.ipa ($(du -h TrollHelper_arm64e.ipa | cut -f1))"
-
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: TrollHelper-GTA-IPAs
-        path: |
-          TrollHelper_iOS15.ipa
-          TrollHelper_arm64e.ipa
-        retention-days: 30
 
     - name: Upload to Release
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         gh release delete gta-trollhelper-v1.0 --repo shitou6688/gta-trollhelper-builder --yes --cleanup-tag 2>/dev/null || true
-        NOTES="TrollHelper_iOS15.ipa arm64 A8-A11 iOS 14.0-15.4.1 | TrollHelper_arm64e.ipa arm64e A12+ iOS 14.0-15.6.1 | Victim: GTA Car Tracker"
+        NOTES="TrollHelper_iOS15.ipa → arm64 (A8-A11) iOS 14.0-15.4.1 | TrollHelper_arm64e.ipa → arm64e (A12+) iOS 14.0-15.6.1 | Victim: GTA Car Tracker"
         gh release create gta-trollhelper-v1.0 TrollHelper_iOS15.ipa TrollHelper_arm64e.ipa --repo shitou6688/gta-trollhelper-builder --title "GTA TrollHelper OTA" --notes "$NOTES" --prerelease
