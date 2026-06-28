@@ -1,0 +1,111 @@
+name: Build GTA TrollHelper IPAs
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: brew install ldid openssl@3
+
+    - name: Download InstallerVictim.ipa from Release
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        mkdir -p Victim
+        gh release download gta-victim-v1.0 --repo shitou6688/gta-trollhelper-builder --pattern "a12.ipa" --output "Victim/InstallerVictim.ipa" --clobber
+        ls -la Victim/InstallerVictim.ipa
+
+    - name: Generate victim_gta.p12
+      run: |
+        bash scripts/generate_victim_cert.sh T8ALTGMVXN
+        mv victim.p12 victim_gta.p12
+        ls -la victim_gta.p12
+
+    - name: Verify helper binaries
+      run: |
+        for f in helpers/PersistenceHelper_Embedded_Legacy_arm64 helpers/PersistenceHelper_Embedded_Legacy_arm64e; do
+          if [ ! -f "$f" ]; then
+            echo "ERROR: Missing $f"
+            exit 1
+          fi
+          file "$f"
+        done
+
+    - name: Build TrollHelper_iOS15.ipa (arm64)
+      run: |
+        mkdir -p _build/tmp15
+        unzip -o Victim/InstallerVictim.ipa -d _build/tmp15
+        APP_PATH=$(find _build/tmp15/Payload -maxdepth 1 -mindepth 1 -type d | head -1)
+        APP_NAME=$(basename "$APP_PATH")
+        BINARY_NAME=$(echo "$APP_NAME" | cut -f1 -d'.')
+        echo "App: $APP_NAME, Binary: $BINARY_NAME"
+
+        cp helpers/PersistenceHelper_Embedded_Legacy_arm64 _build/TrollStorePersistenceHelperToInject
+        python3 scripts/pwnify.py set-cpusubtype _build/TrollStorePersistenceHelperToInject 1
+        ldid -S -K./victim_gta.p12 _build/TrollStorePersistenceHelperToInject
+        python3 scripts/pwnify.py pwn "_build/tmp15/Payload/$APP_NAME/$BINARY_NAME" _build/TrollStorePersistenceHelperToInject
+
+        # Add ATS exception to allow HTTP requests
+        /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity dict" "_build/tmp15/Payload/$APP_NAME/Info.plist"
+        /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity:NSAllowsArbitraryLoads bool true" "_build/tmp15/Payload/$APP_NAME/Info.plist"
+        echo "Added ATS exception for HTTP"
+
+        python3 scripts/pwnify.py print "_build/tmp15/Payload/$APP_NAME/$BINARY_NAME"
+        cd _build/tmp15 && zip -r ../../TrollHelper_iOS15.ipa Payload/ && cd ../..
+        rm -f _build/TrollStorePersistenceHelperToInject
+        rm -rf _build/tmp15
+        echo "Built TrollHelper_iOS15.ipa ($(du -h TrollHelper_iOS15.ipa | cut -f1))"
+
+    - name: Build TrollHelper_arm64e.ipa (arm64e)
+      run: |
+        mkdir -p _build/tmp64e
+        unzip -o Victim/InstallerVictim.ipa -d _build/tmp64e
+        APP_PATH=$(find _build/tmp64e/Payload -maxdepth 1 -mindepth 1 -type d | head -1)
+        APP_NAME=$(basename "$APP_PATH")
+        BINARY_NAME=$(echo "$APP_NAME" | cut -f1 -d'.')
+        echo "App: $APP_NAME, Binary: $BINARY_NAME"
+
+        python3 scripts/pwnify.py pwn64e "_build/tmp64e/Payload/$APP_NAME/$BINARY_NAME" helpers/PersistenceHelper_Embedded_Legacy_arm64e
+
+        # Add ATS exception to allow HTTP requests
+        /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity dict" "_build/tmp64e/Payload/$APP_NAME/Info.plist"
+        /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity:NSAllowsArbitraryLoads bool true" "_build/tmp64e/Payload/$APP_NAME/Info.plist"
+        echo "Added ATS exception for HTTP"
+
+        python3 scripts/pwnify.py print "_build/tmp64e/Payload/$APP_NAME/$BINARY_NAME"
+        cd _build/tmp64e && zip -r ../../TrollHelper_arm64e.ipa Payload/ && cd ../..
+        rm -rf _build/tmp64e
+        echo "Built TrollHelper_arm64e.ipa ($(du -h TrollHelper_arm64e.ipa | cut -f1))"
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: TrollHelper-GTA-IPAs
+        path: |
+          TrollHelper_iOS15.ipa
+          TrollHelper_arm64e.ipa
+        retention-days: 30
+
+    - name: Upload to Release
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        # Delete old release and tag if exists
+        gh release delete gta-trollhelper-v1.0 --repo shitou6688/gta-trollhelper-builder --yes --cleanup-tag 2>/dev/null || true
+        NOTES="TrollHelper_iOS15.ipa arm64 A8-A11 iOS 14.0-15.4.1 | TrollHelper_arm64e.ipa arm64e A12+ iOS 14.0-15.6.1 | Victim: GTA Car Tracker"
+        gh release create gta-trollhelper-v1.0 TrollHelper_iOS15.ipa TrollHelper_arm64e.ipa --repo shitou6688/gta-trollhelper-builder --title "GTA TrollHelper OTA" --notes "$NOTES" --prerelease
