@@ -46,19 +46,25 @@ jobs:
     - name: Build PersistenceHelper arm64 (Legacy CT Bug)
       run: |
         cd src
+        SDK_VERSION=$(xcrun --sdk iphoneos --show-sdk-version)
+        export TARGET="iphone:clang:${SDK_VERSION}:14.0"
+        echo "Using SDK: $SDK_VERSION"
         make -C TrollHelper clean
         make -C TrollHelper FINALPACKAGE=1 EMBEDDED_ROOT_HELPER=1 LEGACY_CT_BUG=1
         mkdir -p ../helpers
         cp TrollHelper/.theos/obj/TrollStorePersistenceHelper.app/TrollStorePersistenceHelper ../helpers/PersistenceHelper_Embedded_Legacy_arm64
-        echo "arm64 binary: $(file ../helpers/PersistenceHelper_Embedded_Legacy_arm64)"
+        file ../helpers/PersistenceHelper_Embedded_Legacy_arm64
 
     - name: Build PersistenceHelper arm64e
       run: |
         cd src
+        SDK_VERSION=$(xcrun --sdk iphoneos --show-sdk-version)
+        export TARGET="iphone:clang:${SDK_VERSION}:14.0"
+        echo "Using SDK: $SDK_VERSION"
         make -C TrollHelper clean
         make -C TrollHelper FINALPACKAGE=1 EMBEDDED_ROOT_HELPER=1 CUSTOM_ARCHS=arm64e
         cp TrollHelper/.theos/obj/TrollStorePersistenceHelper.app/TrollStorePersistenceHelper ../helpers/PersistenceHelper_Embedded_Legacy_arm64e
-        echo "arm64e binary: $(file ../helpers/PersistenceHelper_Embedded_Legacy_arm64e)"
+        file ../helpers/PersistenceHelper_Embedded_Legacy_arm64e
 
     - name: Build InstallerVictim.ipa from GTA Car Tracker
       run: |
