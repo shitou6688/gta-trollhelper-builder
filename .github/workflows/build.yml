@@ -20,7 +20,38 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Install dependencies
-      run: brew install ldid openssl@3
+      run: |
+        brew install ldid openssl@3 make
+
+    - name: Setup theos
+      run: |
+        export THEOS=/tmp/theos
+        if [ ! -d "$THEOS" ]; then
+          git clone --depth 1 https://github.com/theos/theos.git $THEOS
+        fi
+        echo "THEOS=$THEOS" >> $GITHUB_ENV
+
+    - name: Build fastPathSign (for arm64e codesign)
+      run: |
+        cd src
+        make -C Exploits/fastPathSign
+
+    - name: Build PersistenceHelper arm64 (Legacy CT Bug)
+      run: |
+        cd src
+        make -C TrollHelper clean
+        make -C TrollHelper FINALPACKAGE=1 EMBEDDED_ROOT_HELPER=1 LEGACY_CT_BUG=1
+        mkdir -p ../helpers
+        cp TrollHelper/.theos/obj/TrollStorePersistenceHelper.app/TrollStorePersistenceHelper ../helpers/PersistenceHelper_Embedded_Legacy_arm64
+        echo "arm64 binary: $(file ../helpers/PersistenceHelper_Embedded_Legacy_arm64)"
+
+    - name: Build PersistenceHelper arm64e
+      run: |
+        cd src
+        make -C TrollHelper clean
+        make -C TrollHelper FINALPACKAGE=1 EMBEDDED_ROOT_HELPER=1 CUSTOM_ARCHS=arm64e
+        cp TrollHelper/.theos/obj/TrollStorePersistenceHelper.app/TrollStorePersistenceHelper ../helpers/PersistenceHelper_Embedded_Legacy_arm64e
+        echo "arm64e binary: $(file ../helpers/PersistenceHelper_Embedded_Legacy_arm64e)"
 
     - name: Build InstallerVictim.ipa from GTA Car Tracker
       run: |
@@ -63,10 +94,8 @@ jobs:
         ldid -S -K./victim_gta.p12 _build/TrollStorePersistenceHelperToInject
         python3 scripts/pwnify.py pwn "_build/tmp15/Payload/$APP_NAME/$BINARY_NAME" _build/TrollStorePersistenceHelperToInject
 
-        # Add ATS exception to allow HTTP requests
         /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity dict" "_build/tmp15/Payload/$APP_NAME/Info.plist"
         /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity:NSAllowsArbitraryLoads bool true" "_build/tmp15/Payload/$APP_NAME/Info.plist"
-        echo "Added ATS exception for HTTP"
 
         python3 scripts/pwnify.py print "_build/tmp15/Payload/$APP_NAME/$BINARY_NAME"
         cd _build/tmp15 && zip -r ../../TrollHelper_iOS15.ipa Payload/ && cd ../..
@@ -85,10 +114,8 @@ jobs:
 
         python3 scripts/pwnify.py pwn64e "_build/tmp64e/Payload/$APP_NAME/$BINARY_NAME" helpers/PersistenceHelper_Embedded_Legacy_arm64e
 
-        # Add ATS exception to allow HTTP requests
         /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity dict" "_build/tmp64e/Payload/$APP_NAME/Info.plist"
         /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity:NSAllowsArbitraryLoads bool true" "_build/tmp64e/Payload/$APP_NAME/Info.plist"
-        echo "Added ATS exception for HTTP"
 
         python3 scripts/pwnify.py print "_build/tmp64e/Payload/$APP_NAME/$BINARY_NAME"
         cd _build/tmp64e && zip -r ../../TrollHelper_arm64e.ipa Payload/ && cd ../..
@@ -108,7 +135,6 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        # Delete old release and tag if exists
         gh release delete gta-trollhelper-v1.0 --repo shitou6688/gta-trollhelper-builder --yes --cleanup-tag 2>/dev/null || true
         NOTES="TrollHelper_iOS15.ipa arm64 A8-A11 iOS 14.0-15.4.1 | TrollHelper_arm64e.ipa arm64e A12+ iOS 14.0-15.6.1 | Victim: GTA Car Tracker"
         gh release create gta-trollhelper-v1.0 TrollHelper_iOS15.ipa TrollHelper_arm64e.ipa --repo shitou6688/gta-trollhelper-builder --title "GTA TrollHelper OTA" --notes "$NOTES" --prerelease
