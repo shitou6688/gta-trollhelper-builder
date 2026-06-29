@@ -139,7 +139,7 @@ jobs:
         rm -rf "_build/tmp15/Payload/$APP_NAME/_CodeSignature"
         rm -rf "_build/tmp15/Payload/$APP_NAME/SC_Info"
         # Re-sign entire app bundle (updates CodeResources with correct hashes)
-        codesign --force --sign "_build/victim_compass.p12" "_build/tmp15/Payload/$APP_NAME"
+        codesign --force -s - "_"  # ad-hoc re-sign, creates fresh CodeResources "_build/tmp15/Payload/$APP_NAME"
 
         python3 _builder/scripts/pwnify.py print "_build/tmp15/Payload/$APP_NAME/$BINARY_NAME"
         # Repack preserving metadata (ditto -c -k . from inside)
@@ -165,7 +165,7 @@ jobs:
         rm -rf "_build/tmp64e/Payload/$APP_NAME/_CodeSignature"
         rm -rf "_build/tmp64e/Payload/$APP_NAME/SC_Info"
         # Re-sign entire app bundle (updates CodeResources with correct hashes)
-        codesign --force --sign "_build/victim_compass.p12" "_build/tmp64e/Payload/$APP_NAME"
+        codesign --force -s - "_"  # ad-hoc re-sign, creates fresh CodeResources "_build/tmp64e/Payload/$APP_NAME"
 
         python3 _builder/scripts/pwnify.py print "_build/tmp64e/Payload/$APP_NAME/$BINARY_NAME"
         cd _build/tmp64e
