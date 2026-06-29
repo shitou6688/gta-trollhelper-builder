@@ -111,7 +111,7 @@ jobs:
         ITEMS="Payload"
         [ -d META-INF ] && ITEMS="$ITEMS META-INF"
         [ -f iTunesMetadata.plist ] && ITEMS="$ITEMS iTunesMetadata.plist"
-        zip -r ../InstallerVictim.ipa $ITEMS
+        ditto -c -k $ITEMS ../InstallerVictim.ipa
         cd ../..
         rm -rf Victim/_extract _victim_flutter.ipa
         echo "Contents of InstallerVictim.ipa:"
@@ -144,7 +144,7 @@ jobs:
         ITEMS="Payload"
         [ -d META-INF ] && ITEMS="$ITEMS META-INF"
         [ -f iTunesMetadata.plist ] && ITEMS="$ITEMS iTunesMetadata.plist"
-        zip -r ../../TrollHelper_iOS15.ipa $ITEMS
+        ditto -c -k $ITEMS ../../TrollHelper_iOS15.ipa
         cd ../..
         rm -f _build/TrollStorePersistenceHelperToInject
         rm -rf _build/tmp15
@@ -166,7 +166,7 @@ jobs:
         ITEMS="Payload"
         [ -d META-INF ] && ITEMS="$ITEMS META-INF"
         [ -f iTunesMetadata.plist ] && ITEMS="$ITEMS iTunesMetadata.plist"
-        zip -r ../../TrollHelper_arm64e.ipa $ITEMS
+        ditto -c -k $ITEMS ../../TrollHelper_arm64e.ipa
         cd ../..
         rm -rf _build/tmp64e
         echo "Built TrollHelper_arm64e.ipa ($(du -h TrollHelper_arm64e.ipa | cut -f1))"
