@@ -106,6 +106,8 @@ jobs:
         curl -L -o _victim_compass.ipa "https://github.com/shitou6688/gta-trollhelper-builder/releases/download/compass-template/compass.ipa"
         mkdir -p Victim/_extract
         ditto -x -k _victim_compass.ipa Victim/_extract
+        # Generate OTA metadata (META-INF + iTunesMetadata.plist) required for itms-services installation
+        python3 _builder/scripts/generate_ota_metadata.py Victim/_extract wenlin.compassink.deepsearch "指南针" "2.2"
         # Archive everything preserving metadata (ditto -c -k . from inside)
         cd Victim/_extract
         ditto -c -k . ../InstallerVictim.ipa
