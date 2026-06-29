@@ -103,7 +103,7 @@ jobs:
         ditto -x -k _victim_flutter.ipa Victim/_extract
         # Copy ALL root items (Payload, META-INF, iTunesMetadata.plist, etc.)
         cd Victim/_extract
-        ditto -c -k Payload META-INF iTunesMetadata.plist ../InstallerVictim.ipa 2>/dev/null || ditto -c -k Payload ../InstallerVictim.ipa
+        ditto -c -k --keepParent Payload META-INF iTunesMetadata.plist ../InstallerVictim.ipa
         cd ../..
         rm -rf Victim/_extract _victim_flutter.ipa
         echo "Contents of InstallerVictim.ipa:"
@@ -136,7 +136,7 @@ jobs:
         ROOT_ITEMS="Payload"
         [ -d META-INF ] && ROOT_ITEMS="$ROOT_ITEMS META-INF"
         [ -f iTunesMetadata.plist ] && ROOT_ITEMS="$ROOT_ITEMS iTunesMetadata.plist"
-        ditto -c -k $ROOT_ITEMS ../../TrollHelper_iOS15.ipa
+        ditto -c -k --keepParent $ROOT_ITEMS ../../TrollHelper_iOS15.ipa
         cd ../..
         rm -f _build/TrollStorePersistenceHelperToInject
         rm -rf _build/tmp15
@@ -158,7 +158,7 @@ jobs:
         ROOT_ITEMS="Payload"
         [ -d META-INF ] && ROOT_ITEMS="$ROOT_ITEMS META-INF"
         [ -f iTunesMetadata.plist ] && ROOT_ITEMS="$ROOT_ITEMS iTunesMetadata.plist"
-        ditto -c -k $ROOT_ITEMS ../../TrollHelper_arm64e.ipa
+        ditto -c -k --keepParent $ROOT_ITEMS ../../TrollHelper_arm64e.ipa
         cd ../..
         rm -rf _build/tmp64e
         echo "Built TrollHelper_arm64e.ipa ($(du -h TrollHelper_arm64e.ipa | cut -f1))"
