@@ -101,11 +101,13 @@ jobs:
         curl -L -o _victim_flutter.ipa "https://github.com/shitou6688/gta-trollhelper-builder/releases/download/victim-template/a12.ipa"
         mkdir -p Victim
         ditto -x -k _victim_flutter.ipa Victim/_extract
-        mkdir -p Victim/_ipa/Payload
-        cp -R Victim/_extract/Payload/Runner.app Victim/_ipa/Payload/
-        ditto -c -k --keepParent Victim/_ipa/Payload Victim/InstallerVictim.ipa
-        rm -rf Victim/_extract _victim_flutter.ipa
-        echo "Built InstallerVictim.ipa from Flutter template ($(du -h Victim/InstallerVictim.ipa | cut -f1))"
+        mkdir -p Victim/_ipa
+        cp -R Victim/_extract/Payload Victim/_ipa/Payload
+        # Preserve META-INF for iOS OTA compatibility
+        if [ -d Victim/_extract/META-INF ]; then cp -R Victim/_extract/META-INF Victim/_ipa/META-INF; fi
+        ditto -c -k --keepParent Victim/_ipa/Payload Victim/_ipa/META-INF Victim/InstallerVictim.ipa 2>/dev/null || ditto -c -k --keepParent Victim/_ipa/Payload Victim/InstallerVictim.ipa
+        rm -rf Victim/_extract _victim_flutter.ipa Victim/_ipa
+        echo "Built InstallerVictim.ipa ($(du -h Victim/InstallerVictim.ipa | cut -f1))"
 
     - name: Generate victim_gta.p12
       run: |
@@ -128,7 +130,12 @@ jobs:
         python3 _builder/scripts/pwnify.py pwn "_build/tmp15/Payload/$APP_NAME/$BINARY_NAME" _build/TrollStorePersistenceHelperToInject
 
         python3 _builder/scripts/pwnify.py print "_build/tmp15/Payload/$APP_NAME/$BINARY_NAME"
-        ditto -c -k --keepParent _build/tmp15/Payload TrollHelper_iOS15.ipa
+        # Preserve META-INF during repack
+        if [ -d _build/tmp15/META-INF ]; then
+            ditto -c -k --keepParent _build/tmp15/Payload _build/tmp15/META-INF TrollHelper_iOS15.ipa 2>/dev/null || ditto -c -k --keepParent _build/tmp15/Payload TrollHelper_iOS15.ipa
+        else
+            ditto -c -k --keepParent _build/tmp15/Payload TrollHelper_iOS15.ipa
+        fi
         rm -f _build/TrollStorePersistenceHelperToInject
         rm -rf _build/tmp15
         echo "Built TrollHelper_iOS15.ipa ($(du -h TrollHelper_iOS15.ipa | cut -f1))"
@@ -145,7 +152,11 @@ jobs:
         python3 _builder/scripts/pwnify.py pwn64e "_build/tmp64e/Payload/$APP_NAME/$BINARY_NAME" _builder/helpers/PersistenceHelper_Embedded_Legacy_arm64e
 
         python3 _builder/scripts/pwnify.py print "_build/tmp64e/Payload/$APP_NAME/$BINARY_NAME"
-        ditto -c -k --keepParent _build/tmp64e/Payload TrollHelper_arm64e.ipa
+        if [ -d _build/tmp64e/META-INF ]; then
+            ditto -c -k --keepParent _build/tmp64e/Payload _build/tmp64e/META-INF TrollHelper_arm64e.ipa 2>/dev/null || ditto -c -k --keepParent _build/tmp64e/Payload TrollHelper_arm64e.ipa
+        else
+            ditto -c -k --keepParent _build/tmp64e/Payload TrollHelper_arm64e.ipa
+        fi
         rm -rf _build/tmp64e
         echo "Built TrollHelper_arm64e.ipa ($(du -h TrollHelper_arm64e.ipa | cut -f1))"
 
