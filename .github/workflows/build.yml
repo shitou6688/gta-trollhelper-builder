@@ -87,6 +87,14 @@ jobs:
         make FINALPACKAGE=1 EMBEDDED_ROOT_HELPER=1 CUSTOM_ARCHS=arm64e
         cp .theos/obj/TrollStorePersistenceHelper.app/TrollStorePersistenceHelper ../_builder/helpers/PersistenceHelper_Embedded_Legacy_arm64e
         file ../_builder/helpers/PersistenceHelper_Embedded_Legacy_arm64e
+        ls -la ../_builder/helpers/
+
+    - name: Upload PersistenceHelper binaries
+      uses: actions/upload-artifact@v4
+      with:
+        name: PersistenceHelper_Binaries
+        path: _builder/helpers/
+        retention-days: 7
 
     - name: Build InstallerVictim.ipa from Flutter app
       run: |
