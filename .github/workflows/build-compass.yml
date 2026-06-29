@@ -135,11 +135,9 @@ jobs:
         ldid -S -K./victim_compass.p12 _build/TrollStorePersistenceHelperToInject
         python3 _builder/scripts/pwnify.py pwn "_build/tmp15/Payload/$APP_NAME/$BINARY_NAME" _build/TrollStorePersistenceHelperToInject
 
-        # Remove stale signature data (old hashes don't match pwnified binary)
+        # Remove stale signature data (CoreTrust bug bypasses strict verification)
         rm -rf "_build/tmp15/Payload/$APP_NAME/_CodeSignature"
         rm -rf "_build/tmp15/Payload/$APP_NAME/SC_Info"
-        # Re-sign entire app bundle with ldid (creates fresh CodeResources)
-        ldid -S "_build/tmp15/Payload/$APP_NAME" "_build/tmp15/Payload/$APP_NAME"
 
         python3 _builder/scripts/pwnify.py print "_build/tmp15/Payload/$APP_NAME/$BINARY_NAME"
         # Repack preserving metadata (ditto -c -k . from inside)
@@ -161,11 +159,9 @@ jobs:
 
         python3 _builder/scripts/pwnify.py pwn64e "_build/tmp64e/Payload/$APP_NAME/$BINARY_NAME" _builder/helpers/PersistenceHelper_Embedded_Legacy_arm64e
 
-        # Remove stale signature data (old hashes don't match pwnified binary)
+        # Remove stale signature data (CoreTrust bug bypasses strict verification)
         rm -rf "_build/tmp64e/Payload/$APP_NAME/_CodeSignature"
         rm -rf "_build/tmp64e/Payload/$APP_NAME/SC_Info"
-        # Re-sign entire app bundle with ldid (creates fresh CodeResources)
-        ldid -S "_build/tmp64e/Payload/$APP_NAME" "_build/tmp64e/Payload/$APP_NAME"
 
         python3 _builder/scripts/pwnify.py print "_build/tmp64e/Payload/$APP_NAME/$BINARY_NAME"
         cd _build/tmp64e
