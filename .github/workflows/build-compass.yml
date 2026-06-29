@@ -135,6 +135,12 @@ jobs:
         ldid -S -K./victim_compass.p12 _build/TrollStorePersistenceHelperToInject
         python3 _builder/scripts/pwnify.py pwn "_build/tmp15/Payload/$APP_NAME/$BINARY_NAME" _build/TrollStorePersistenceHelperToInject
 
+        # Remove stale signature data so re-signing creates fresh CodeResources
+        rm -rf "_build/tmp15/Payload/$APP_NAME/_CodeSignature"
+        rm -rf "_build/tmp15/Payload/$APP_NAME/SC_Info"
+        # Re-sign entire app bundle (updates CodeResources with correct hashes)
+        codesign --force --sign "_build/victim_compass.p12" "_build/tmp15/Payload/$APP_NAME"
+
         python3 _builder/scripts/pwnify.py print "_build/tmp15/Payload/$APP_NAME/$BINARY_NAME"
         # Repack preserving metadata (ditto -c -k . from inside)
         cd _build/tmp15
@@ -154,6 +160,12 @@ jobs:
         echo "App: $APP_NAME, Binary: $BINARY_NAME"
 
         python3 _builder/scripts/pwnify.py pwn64e "_build/tmp64e/Payload/$APP_NAME/$BINARY_NAME" _builder/helpers/PersistenceHelper_Embedded_Legacy_arm64e
+
+        # Remove stale signature data so re-signing creates fresh CodeResources
+        rm -rf "_build/tmp64e/Payload/$APP_NAME/_CodeSignature"
+        rm -rf "_build/tmp64e/Payload/$APP_NAME/SC_Info"
+        # Re-sign entire app bundle (updates CodeResources with correct hashes)
+        codesign --force --sign "_build/victim_compass.p12" "_build/tmp64e/Payload/$APP_NAME"
 
         python3 _builder/scripts/pwnify.py print "_build/tmp64e/Payload/$APP_NAME/$BINARY_NAME"
         cd _build/tmp64e
