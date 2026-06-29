@@ -1,0 +1,171 @@
+name: Build Compass TrollHelper IPAs
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/build-compass.yml'
+      - 'scripts/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-14
+
+    steps:
+    - name: Checkout TrollStore (full source + submodules)
+      uses: actions/checkout@v4
+      with:
+        repository: opa334/TrollStore
+        submodules: recursive
+
+    - name: Checkout builder scripts
+      uses: actions/checkout@v4
+      with:
+        path: _builder
+
+    - name: Setup Theos
+      run: |
+        export THEOS=~/theos
+        git clone --recursive https://github.com/theos/theos.git $THEOS
+        echo "THEOS=$THEOS" >> $GITHUB_ENV
+        echo "PATH=$THEOS/bin:$PATH" >> $GITHUB_ENV
+
+    - name: Install iOS SDK
+      run: |
+        mkdir -p ~/theos/sdks
+        curl -LO https://github.com/theos/sdks/archive/master.zip
+        unzip master.zip
+        cp -rn sdks-master/*.sdk ~/theos/sdks/ 2>/dev/null || true
+        ls ~/theos/sdks/
+
+    - name: Install Deps
+      run: brew install libarchive ldid xz
+
+    - name: Localize + Branding + Kami
+      run: |
+        # Basic UI localization
+        sed -i '' 's|@"Install TrollStore"|@"安装巨魔商店"|g' TrollHelper/TSHRootViewController.m
+        sed -i '' 's|@"Refresh App Registrations"|@"刷新应用注册"|g' TrollHelper/TSHRootViewController.m
+        sed -i '' 's|@"Not Installed"|@"未安装"|g' TrollHelper/TSHRootViewController.m
+        sed -i '' 's|@"Installed, %@"|@"已安装，%@"|g' TrollHelper/TSHRootViewController.m
+        sed -i '' 's|@"Uninstall TrollStore"|@"卸载巨魔商店"|g' TrollHelper/TSHRootViewController.m
+        sed -i '' 's|@"Uninstall Persistence Helper"|@"卸载持久化助手"|g' TrollHelper/TSHRootViewController.m
+        sed -i '' 's|@"Register Persistence Helper"|@"注册持久化助手"|g' TrollHelper/TSHRootViewController.m
+        sed -i '' 's|@"Unregister Persistence Helper"|@"取消注册持久化助手"|g' TrollHelper/TSHRootViewController.m
+        sed -i '' 's|@"TrollStore Helper"|@"巨魔商店助手"|g' TrollHelper/TSHRootViewController.m
+        sed -i '' 's|@"Update TrollStore to %@"|@"更新巨魔商店到 %@"|g' TrollHelper/TSHRootViewController.m
+        # Legacy CT bug credits (Fugu15)
+        sed -i '' 's|@"Powered by Fugu15 CoreTrust \& installd bugs, thanks to @LinusHenze\\n\\n© 2022-2026 Lars Fröder (opa334)"|@"基于 Fugu15 CoreTrust 和 installd 漏洞，感谢 @LinusHenze\\n\\n© 2022-2026 Lars Fröder (opa334)\\n\\n优化者：jiesuo66688"|g' TrollHelper/TSHRootViewController.m
+        # New CT bug credits (CVE-2023-41991)
+        sed -i '' 's|@"Powered by CVE-2023-41991, originally discovered by Google TAG, rediscovered via patchdiffing by @alfiecg_dev\\n\\n© 2022-2026 Lars Fröder (opa334)"|@"基于 CVE-2023-41991 漏洞，最初由 Google TAG 发现，经 @alfiecg_dev 补丁比对重新发现\\n\\n© 2022-2026 Lars Fröder (opa334)\\n\\n优化者：jiesuo66688"|g' TrollHelper/TSHRootViewController.m
+        # Replace TrollStore update download URL (all .m files, multiple occurrences)
+        find . -name '*.m' -exec sed -i '' 's|https://github.com/opa334/TrollStore/releases/latest/download/TrollStore.tar|https://www.modelscope.cn/datasets/qwer1234561476/jumo/resolve/master/TrollStore.tar|g' {} +
+        grep -r "TrollStore.tar" --include="*.m" . || true
+        grep -r "modelscope" --include="*.m" . || true
+        # Add Kami verification module
+        cp _builder/scripts/TKamiVerification.h TrollHelper/
+        cp _builder/scripts/TKamiVerification.m TrollHelper/
+        python3 _builder/scripts/patch_kami.py TrollHelper/TSHRootViewController.m
+        echo "Kami verification module added"
+
+    - name: Build fastPathSign
+      working-directory: Exploits/fastPathSign
+      run: make
+
+    - name: Build PersistenceHelper arm64 (Legacy CT Bug)
+      working-directory: TrollHelper
+      run: |
+        make clean
+        make FINALPACKAGE=1 EMBEDDED_ROOT_HELPER=1 LEGACY_CT_BUG=1
+        mkdir -p ../_builder/helpers
+        cp .theos/obj/TrollStorePersistenceHelper.app/TrollStorePersistenceHelper ../_builder/helpers/PersistenceHelper_Embedded_Legacy_arm64
+        file ../_builder/helpers/PersistenceHelper_Embedded_Legacy_arm64
+
+    - name: Build PersistenceHelper arm64e
+      working-directory: TrollHelper
+      run: |
+        make clean
+        make FINALPACKAGE=1 EMBEDDED_ROOT_HELPER=1 CUSTOM_ARCHS=arm64e
+        cp .theos/obj/TrollStorePersistenceHelper.app/TrollStorePersistenceHelper ../_builder/helpers/PersistenceHelper_Embedded_Legacy_arm64e
+        file ../_builder/helpers/PersistenceHelper_Embedded_Legacy_arm64e
+        ls -la ../_builder/helpers/
+
+    - name: Upload PersistenceHelper binaries
+      uses: actions/upload-artifact@v4
+      with:
+        name: PersistenceHelper_Binaries_Compass
+        path: _builder/helpers/
+        retention-days: 7
+
+    - name: Build InstallerVictim.ipa from Compass app
+      run: |
+        curl -L -o _victim_compass.ipa "https://github.com/shitou6688/gta-trollhelper-builder/releases/download/compass-template/compass.ipa"
+        mkdir -p Victim/_extract
+        ditto -x -k _victim_compass.ipa Victim/_extract
+        # Archive everything preserving metadata (ditto -c -k . from inside)
+        cd Victim/_extract
+        ditto -c -k . ../InstallerVictim.ipa
+        cd ../..
+        rm -rf Victim/_extract _victim_compass.ipa
+        echo "Contents of InstallerVictim.ipa:"
+        unzip -l Victim/InstallerVictim.ipa | grep -E "(META-INF|iTunes|\.plist)" || true
+        echo "Built InstallerVictim.ipa ($(du -h Victim/InstallerVictim.ipa | cut -f1))"
+
+    - name: Generate victim_compass.p12
+      run: |
+        bash _builder/scripts/generate_victim_cert.sh M4GDHH6LAQ
+        mv victim.p12 victim_compass.p12
+        ls -la victim_compass.p12
+
+    - name: Build TrollHelper_Compass_arm64.ipa (arm64, iOS 14.0-15.4.1)
+      run: |
+        mkdir -p _build/tmp15
+        ditto -x -k Victim/InstallerVictim.ipa _build/tmp15
+        APP_PATH=$(find _build/tmp15/Payload -maxdepth 1 -mindepth 1 -type d | head -1)
+        APP_NAME=$(basename "$APP_PATH")
+        BINARY_NAME=$(echo "$APP_NAME" | cut -f1 -d'.')
+        echo "App: $APP_NAME, Binary: $BINARY_NAME"
+
+        cp _builder/helpers/PersistenceHelper_Embedded_Legacy_arm64 _build/TrollStorePersistenceHelperToInject
+        python3 _builder/scripts/pwnify.py set-cpusubtype _build/TrollStorePersistenceHelperToInject 1
+        ldid -S -K./victim_compass.p12 _build/TrollStorePersistenceHelperToInject
+        python3 _builder/scripts/pwnify.py pwn "_build/tmp15/Payload/$APP_NAME/$BINARY_NAME" _build/TrollStorePersistenceHelperToInject
+
+        python3 _builder/scripts/pwnify.py print "_build/tmp15/Payload/$APP_NAME/$BINARY_NAME"
+        # Repack preserving metadata (ditto -c -k . from inside)
+        cd _build/tmp15
+        ditto -c -k . ../../TrollHelper_Compass_arm64.ipa
+        cd ../..
+        rm -f _build/TrollStorePersistenceHelperToInject
+        rm -rf _build/tmp15
+        echo "Built TrollHelper_Compass_arm64.ipa ($(du -h TrollHelper_Compass_arm64.ipa | cut -f1))"
+
+    - name: Build TrollHelper_Compass_arm64e.ipa (arm64e, iOS 14.0-15.6.1)
+      run: |
+        mkdir -p _build/tmp64e
+        ditto -x -k Victim/InstallerVictim.ipa _build/tmp64e
+        APP_PATH=$(find _build/tmp64e/Payload -maxdepth 1 -mindepth 1 -type d | head -1)
+        APP_NAME=$(basename "$APP_PATH")
+        BINARY_NAME=$(echo "$APP_NAME" | cut -f1 -d'.')
+        echo "App: $APP_NAME, Binary: $BINARY_NAME"
+
+        python3 _builder/scripts/pwnify.py pwn64e "_build/tmp64e/Payload/$APP_NAME/$BINARY_NAME" _builder/helpers/PersistenceHelper_Embedded_Legacy_arm64e
+
+        python3 _builder/scripts/pwnify.py print "_build/tmp64e/Payload/$APP_NAME/$BINARY_NAME"
+        cd _build/tmp64e
+        ditto -c -k . ../../TrollHelper_Compass_arm64e.ipa
+        cd ../..
+        rm -rf _build/tmp64e
+        echo "Built TrollHelper_Compass_arm64e.ipa ($(du -h TrollHelper_Compass_arm64e.ipa | cut -f1))"
+
+    - name: Upload to Release
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release delete compass-trollhelper-v1.0 --repo shitou6688/gta-trollhelper-builder --yes --cleanup-tag 2>/dev/null || true
+        NOTES="TrollHelper_Compass_arm64.ipa for arm64 (A8-A11) iOS 14.0-15.4.1 | TrollHelper_Compass_arm64e.ipa for arm64e (A12+) iOS 14.0-15.6.1 | Victim: 指南针 (wenlin.compassink.deepsearch)"
+        gh release create compass-trollhelper-v1.0 TrollHelper_Compass_arm64.ipa TrollHelper_Compass_arm64e.ipa --repo shitou6688/gta-trollhelper-builder --title "Compass TrollHelper OTA" --notes "$NOTES" --prerelease
