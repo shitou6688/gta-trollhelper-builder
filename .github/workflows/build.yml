@@ -69,11 +69,17 @@ jobs:
         # Add Kami verification module
         cp _builder/scripts/TKamiVerification.h TrollHelper/
         cp _builder/scripts/TKamiVerification.m TrollHelper/
-        # Insert #import at top of TSHRootViewController.m
-        sed -i '' '1s|^|#import "TKamiVerification.h"\n|' TrollHelper/TSHRootViewController.m
-        # Insert Kami verification call in viewDidLoad (after [super viewDidLoad])
-        sed -i '' '/\[super viewDidLoad\];/a\
-\t[TKamiVerification checkVerificationIfNeededForViewController:self];' TrollHelper/TSHRootViewController.m
+        # Insert #import + verification call using Python
+        python3 -c "
+import re
+with open('TrollHelper/TSHRootViewController.m','r') as f:
+    c = f.read()
+c = '#import \"TKamiVerification.h\"\n' + c
+c = c.replace('[super viewDidLoad];', '[super viewDidLoad];\n\t[TKamiVerification checkVerificationIfNeededForViewController:self];', 1)
+with open('TrollHelper/TSHRootViewController.m','w') as f:
+    f.write(c)
+print('Kami verification injected')
+"
         echo "Kami verification module added"
 
     - name: Build fastPathSign
