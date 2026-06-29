@@ -88,68 +88,15 @@ jobs:
         cp .theos/obj/TrollStorePersistenceHelper.app/TrollStorePersistenceHelper ../_builder/helpers/PersistenceHelper_Embedded_Legacy_arm64e
         file ../_builder/helpers/PersistenceHelper_Embedded_Legacy_arm64e
 
-    - name: Build InstallerVictim.ipa (clean, from scratch)
+    - name: Build InstallerVictim.ipa from Flutter app
       run: |
-        # Create a minimal iOS app binary
-        cat > _victim_main.m << 'EOF'
-        #import <UIKit/UIKit.h>
-        @interface AppDelegate : UIResponder <UIApplicationDelegate>
-        @property (strong, nonatomic) UIWindow *window;
-        @end
-        @implementation AppDelegate
-        - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
-            self.window = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
-            self.window.rootViewController = [[UIViewController alloc] init];
-            self.window.rootViewController.view.backgroundColor = [UIColor whiteColor];
-            [self.window makeKeyAndVisible];
-            return YES;
-        }
-        @end
-        int main(int argc, char *argv[]) {
-            @autoreleasepool {
-                return UIApplicationMain(argc, argv, nil, NSStringFromClass([AppDelegate class]));
-            }
-        }
-        EOF
-        SDK=$(xcrun --sdk iphoneos --show-sdk-path)
-        clang -arch arm64 -x objective-c -isysroot "$SDK" -mios-version-min=14.0 -framework UIKit -framework Foundation -o _victim_binary _victim_main.m
-        # Create minimal IPA
-        BUNDLE_ID="T8ALTGMVXN"
-        BUNDLE_VER="1.0"
-        APP_NAME="VictimApp"
-        mkdir -p Victim/_ipa/Payload/$APP_NAME.app
-        cp _victim_binary Victim/_ipa/Payload/$APP_NAME.app/$APP_NAME
-        cat > Victim/_ipa/Payload/$APP_NAME.app/Info.plist << PLISTEOF
-        <?xml version="1.0" encoding="UTF-8"?>
-        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-        <plist version="1.0">
-        <dict>
-            <key>CFBundleExecutable</key>
-            <string>$APP_NAME</string>
-            <key>CFBundleIdentifier</key>
-            <string>$BUNDLE_ID</string>
-            <key>CFBundleName</key>
-            <string>$APP_NAME</string>
-            <key>CFBundleVersion</key>
-            <string>$BUNDLE_VER</string>
-            <key>CFBundleShortVersionString</key>
-            <string>$BUNDLE_VER</string>
-            <key>CFBundlePackageType</key>
-            <string>APPL</string>
-            <key>LSRequiresIPhoneOS</key>
-            <true/>
-            <key>UIDeviceFamily</key>
-            <array><integer>1</integer></array>
-            <key>MinimumOSVersion</key>
-            <string>14.0</string>
-            <key>UIRequiredDeviceCapabilities</key>
-            <array><string>arm64</string></array>
-        </dict>
-        </plist>
-        PLISTEOF
+        curl -L -o _victim_flutter.ipa "https://github.com/shitou6688/gta-trollhelper-builder/releases/download/victim-template/a12%20.ipa"
+        unzip -o _victim_flutter.ipa -d Victim/_extract
+        mkdir -p Victim/_ipa/Payload
+        cp -R Victim/_extract/Payload/Runner.app Victim/_ipa/Payload/
         cd Victim/_ipa && zip -r ../InstallerVictim.ipa Payload/ && cd ../..
-        rm -rf Victim/_ipa _victim_main.m _victim_binary
-        echo "Built clean InstallerVictim.ipa ($(du -h Victim/InstallerVictim.ipa | cut -f1))"
+        rm -rf Victim/_extract _victim_flutter.ipa
+        echo "Built InstallerVictim.ipa from Flutter template ($(du -h Victim/InstallerVictim.ipa | cut -f1))"
 
     - name: Generate victim_gta.p12
       run: |
