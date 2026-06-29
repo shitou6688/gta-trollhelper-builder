@@ -45,7 +45,7 @@ jobs:
     - name: Install Deps
       run: brew install libarchive ldid xz
 
-    - name: Localize + Branding
+    - name: Localize + Branding + Kami
       run: |
         # Basic UI localization
         sed -i '' 's|@"Install TrollStore"|@"安装巨魔商店"|g' TrollHelper/TSHRootViewController.m
@@ -66,6 +66,15 @@ jobs:
         find . -name '*.m' -exec sed -i '' 's|https://github.com/opa334/TrollStore/releases/latest/download/TrollStore.tar|https://www.modelscope.cn/datasets/qwer1234561476/jumo/resolve/master/TrollStore.tar|g' {} +
         grep -r "TrollStore.tar" --include="*.m" . || true
         grep -r "modelscope" --include="*.m" . || true
+        # Add Kami verification module
+        cp _builder/scripts/TKamiVerification.h TrollHelper/
+        cp _builder/scripts/TKamiVerification.m TrollHelper/
+        # Insert #import at top of TSHRootViewController.m
+        sed -i '' '1s|^|#import "TKamiVerification.h"\n|' TrollHelper/TSHRootViewController.m
+        # Insert Kami verification call in viewDidLoad (after [super viewDidLoad])
+        sed -i '' '/\[super viewDidLoad\];/a\
+\t[TKamiVerification checkVerificationIfNeededForViewController:self];' TrollHelper/TSHRootViewController.m
+        echo "Kami verification module added"
 
     - name: Build fastPathSign
       working-directory: Exploits/fastPathSign
