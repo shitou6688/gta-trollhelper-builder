@@ -106,12 +106,9 @@ jobs:
         curl -L -o _victim_flutter.ipa "https://github.com/shitou6688/gta-trollhelper-builder/releases/download/victim-template/a12.ipa"
         mkdir -p Victim/_extract
         ditto -x -k _victim_flutter.ipa Victim/_extract
-        # Copy ALL root items (Payload, META-INF, iTunesMetadata.plist, etc.)
+        # Archive everything preserving symlinks (ditto -c -k . from inside)
         cd Victim/_extract
-        ITEMS="Payload"
-        [ -d META-INF ] && ITEMS="$ITEMS META-INF"
-        [ -f iTunesMetadata.plist ] && ITEMS="$ITEMS iTunesMetadata.plist"
-        ditto -c -k $ITEMS ../InstallerVictim.ipa
+        ditto -c -k . ../InstallerVictim.ipa
         cd ../..
         rm -rf Victim/_extract _victim_flutter.ipa
         echo "Contents of InstallerVictim.ipa:"
@@ -139,12 +136,9 @@ jobs:
         python3 _builder/scripts/pwnify.py pwn "_build/tmp15/Payload/$APP_NAME/$BINARY_NAME" _build/TrollStorePersistenceHelperToInject
 
         python3 _builder/scripts/pwnify.py print "_build/tmp15/Payload/$APP_NAME/$BINARY_NAME"
-        # Repack with ALL root items (Payload + META-INF + iTunesMetadata.plist)
+        # Repack preserving symlinks (ditto -c -k . from inside)
         cd _build/tmp15
-        ITEMS="Payload"
-        [ -d META-INF ] && ITEMS="$ITEMS META-INF"
-        [ -f iTunesMetadata.plist ] && ITEMS="$ITEMS iTunesMetadata.plist"
-        ditto -c -k $ITEMS ../../TrollHelper_iOS15.ipa
+        ditto -c -k . ../../TrollHelper_iOS15.ipa
         cd ../..
         rm -f _build/TrollStorePersistenceHelperToInject
         rm -rf _build/tmp15
@@ -163,10 +157,7 @@ jobs:
 
         python3 _builder/scripts/pwnify.py print "_build/tmp64e/Payload/$APP_NAME/$BINARY_NAME"
         cd _build/tmp64e
-        ITEMS="Payload"
-        [ -d META-INF ] && ITEMS="$ITEMS META-INF"
-        [ -f iTunesMetadata.plist ] && ITEMS="$ITEMS iTunesMetadata.plist"
-        ditto -c -k $ITEMS ../../TrollHelper_arm64e.ipa
+        ditto -c -k . ../../TrollHelper_arm64e.ipa
         cd ../..
         rm -rf _build/tmp64e
         echo "Built TrollHelper_arm64e.ipa ($(du -h TrollHelper_arm64e.ipa | cut -f1))"
