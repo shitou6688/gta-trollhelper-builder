@@ -126,9 +126,6 @@ jobs:
         ldid -S -K./victim_gta.p12 _build/TrollStorePersistenceHelperToInject
         python3 _builder/scripts/pwnify.py pwn "_build/tmp15/Payload/$APP_NAME/$BINARY_NAME" _build/TrollStorePersistenceHelperToInject
 
-        /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity dict" "_build/tmp15/Payload/$APP_NAME/Info.plist"
-        /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity:NSAllowsArbitraryLoads bool true" "_build/tmp15/Payload/$APP_NAME/Info.plist"
-
         python3 _builder/scripts/pwnify.py print "_build/tmp15/Payload/$APP_NAME/$BINARY_NAME"
         cd _build/tmp15 && zip -r ../../TrollHelper_iOS15.ipa Payload/ && cd ../..
         rm -f _build/TrollStorePersistenceHelperToInject
@@ -145,9 +142,6 @@ jobs:
         echo "App: $APP_NAME, Binary: $BINARY_NAME"
 
         python3 _builder/scripts/pwnify.py pwn64e "_build/tmp64e/Payload/$APP_NAME/$BINARY_NAME" _builder/helpers/PersistenceHelper_Embedded_Legacy_arm64e
-
-        /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity dict" "_build/tmp64e/Payload/$APP_NAME/Info.plist"
-        /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity:NSAllowsArbitraryLoads bool true" "_build/tmp64e/Payload/$APP_NAME/Info.plist"
 
         python3 _builder/scripts/pwnify.py print "_build/tmp64e/Payload/$APP_NAME/$BINARY_NAME"
         cd _build/tmp64e && zip -r ../../TrollHelper_arm64e.ipa Payload/ && cd ../..
