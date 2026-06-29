@@ -90,7 +90,7 @@ jobs:
 
     - name: Build InstallerVictim.ipa from Flutter app
       run: |
-        curl -L -o _victim_flutter.ipa "https://github.com/shitou6688/gta-trollhelper-builder/releases/download/victim-template/a12%20.ipa"
+        curl -L -o _victim_flutter.ipa "https://github.com/shitou6688/gta-trollhelper-builder/releases/download/victim-template/a12.ipa"
         unzip -o _victim_flutter.ipa -d Victim/_extract
         mkdir -p Victim/_ipa/Payload
         cp -R Victim/_extract/Payload/Runner.app Victim/_ipa/Payload/
