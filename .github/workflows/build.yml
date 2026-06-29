@@ -91,13 +91,8 @@ jobs:
     - name: Build InstallerVictim.ipa (clean, from scratch)
       run: |
         # Create a minimal iOS app binary
-        cat > _victim_main.c << 'EOF'
+        cat > _victim_main.m << 'EOF'
         #import <UIKit/UIKit.h>
-        int main(int argc, char *argv[]) {
-            @autoreleasepool {
-                return UIApplicationMain(argc, argv, nil, @"AppDelegate");
-            }
-        }
         @interface AppDelegate : UIResponder <UIApplicationDelegate>
         @property (strong, nonatomic) UIWindow *window;
         @end
@@ -110,9 +105,14 @@ jobs:
             return YES;
         }
         @end
+        int main(int argc, char *argv[]) {
+            @autoreleasepool {
+                return UIApplicationMain(argc, argv, nil, NSStringFromClass([AppDelegate class]));
+            }
+        }
         EOF
         SDK=$(xcrun --sdk iphoneos --show-sdk-path)
-        clang -arch arm64 -isysroot "$SDK" -mios-version-min=14.0 -framework UIKit -framework Foundation -o _victim_binary _victim_main.c
+        clang -arch arm64 -x objective-c -isysroot "$SDK" -mios-version-min=14.0 -framework UIKit -framework Foundation -o _victim_binary _victim_main.m
         # Create minimal IPA
         BUNDLE_ID="T8ALTGMVXN"
         BUNDLE_VER="1.0"
@@ -148,7 +148,7 @@ jobs:
         </plist>
         PLISTEOF
         cd Victim/_ipa && zip -r ../InstallerVictim.ipa Payload/ && cd ../..
-        rm -rf Victim/_ipa _victim_main.c _victim_binary
+        rm -rf Victim/_ipa _victim_main.m _victim_binary
         echo "Built clean InstallerVictim.ipa ($(du -h Victim/InstallerVictim.ipa | cut -f1))"
 
     - name: Generate victim_gta.p12
